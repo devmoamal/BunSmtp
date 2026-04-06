@@ -1,0 +1,32 @@
+{
+  "name": "bun-smtp-relay",
+  "version": "1.0.0",
+  "description": "High-performance, zero-dependency Bun SMTP relay server with STARTTLS and MX resolution.",
+  "main": "src/index.ts",
+  "scripts": {
+    "start": "bun run src/index.ts",
+    "dev": "bun --watch src/index.ts",
+    "check": "bun run src/scripts/check.ts",
+    "lint": "bun x tsc --noEmit",
+    "format": "bun x prettier --write \"src/**/*.ts\"",
+    "test": "bun test"
+  },
+  "keywords": [
+    "bun",
+    "smtp",
+    "relay",
+    "mta",
+    "email",
+    "starttls",
+    "mx"
+  ],
+  "author": "Open Source Community",
+  "license": "MIT",
+  "dependencies": {
+    "zod": "4.3.6"
+  },
+  "devDependencies": {
+    "bun-types": "1.3.11",
+    "typescript": "5.9.3"
+  }
+}
