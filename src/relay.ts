@@ -63,6 +63,7 @@ async function performManualRelay(host: string, port: number, mail: MailData, do
       await Bun.connect({
         hostname: host,
         port: port,
+        tls: {},
         socket: {
           data(s, data) {
             const res = data.toString();
@@ -103,10 +104,15 @@ async function performManualRelay(host: string, port: number, mail: MailData, do
               case 'STARTTLS':
                 if (code === 220) {
                     try {
-                        (s as any).startTLS();
-                        logger.debug('Encryption active: Socket upgraded to TLS.');
-                        s.write(`EHLO ${config.SMTP_DOMAIN}\r\n`);
-                        currentStep = 'EHLO_POST_TLS';
+                        const socket = s as any;
+                        if (typeof socket.startTLS === 'function') {
+                            socket.startTLS();
+                            logger.debug('Encryption active: Socket upgraded to TLS.');
+                            s.write(`EHLO ${config.SMTP_DOMAIN}\r\n`);
+                            currentStep = 'EHLO_POST_TLS';
+                        } else {
+                            throw new Error('Socket does not support startTLS() in this environment.');
+                        }
                     } catch (e) {
                         logger.error('TLS negotiation failure:', e);
                         reject(new Error('TLS upgrade failed during relay'));
