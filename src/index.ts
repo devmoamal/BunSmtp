@@ -2,10 +2,13 @@ import { startServer } from '@/server';
 import { logger } from '@/utils/logger';
 import { env as config } from '@/config/env.config';
 import { tryCatchSync } from '@/lib/tryCatch';
+import { ensureCerts } from '@/utils/setup-certs';
 
 /**
  * Service initialization logic.
  */
+ensureCerts();
+
 const { data: smtpServer, error: initError } = tryCatchSync(() => startServer());
 
 if (initError || !smtpServer) {
