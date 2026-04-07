@@ -37,7 +37,7 @@ export async function relayMail(mail: MailData): Promise<void> {
     }
 
     const host = bestMx.exchange;
-    const port = 25;
+    const port = config.SMTP_RELAY_PORT;
 
     logger.relay(host, `Initiating relay handshake for domain: ${domain}`);
 
@@ -80,15 +80,12 @@ async function performManualRelay(
       await Bun.connect({
         hostname: host,
         port: port,
-        tls: {},
         socket: {
           data(s, data) {
             const res = data.toString();
             const code = parseInt(res.substring(0, 3));
 
             logger.debug(`[Protocol Handshake] << ${res.trim()}`);
-
-            const hasStartTLS = res.includes("STARTTLS");
 
             if (code >= 400 && currentStep !== "QUIT") {
               clearTimeout(timeout);
@@ -111,44 +108,7 @@ async function performManualRelay(
 
               case "EHLO":
                 if (code === 250) {
-                  if (hasStartTLS) {
-                    logger.debug(
-                      "Encryption requested: Initiating STARTTLS negotiation.",
-                    );
-                    s.write("STARTTLS\r\n");
-                    currentStep = "STARTTLS";
-                  } else {
-                    s.write(`MAIL FROM:<${mail.from}>\r\n`);
-                    currentStep = "MAIL";
-                  }
-                }
-                break;
-
-              case "STARTTLS":
-                if (code === 220) {
-                  try {
-                    const socket = s as any;
-                    if (typeof socket.startTLS === "function") {
-                      socket.startTLS();
-                      logger.debug(
-                        "Encryption active: Socket upgraded to TLS.",
-                      );
-                      s.write(`EHLO ${config.SMTP_DOMAIN}\r\n`);
-                      currentStep = "EHLO_POST_TLS";
-                    } else {
-                      throw new Error(
-                        "Socket does not support startTLS() in this environment.",
-                      );
-                    }
-                  } catch (e) {
-                    logger.error("TLS negotiation failure:", e);
-                    reject(new Error("TLS upgrade failed during relay"));
-                  }
-                }
-                break;
-
-              case "EHLO_POST_TLS":
-                if (code === 250) {
+                  // Direct transition to MAIL (TLS/STARTTLS is completely removed)
                   s.write(`MAIL FROM:<${mail.from}>\r\n`);
                   currentStep = "MAIL";
                 }

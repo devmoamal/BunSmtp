@@ -8,7 +8,7 @@ A high-performance SMTP relay server built with Bun.
 Create a `.env` file with these keys:
 
 ```bash
-SMTP_PORT=587
+SMTP_PORT=25
 SMTP_USER=myuser
 SMTP_PASS=mypassword
 SMTP_DOMAIN=example.com
@@ -39,7 +39,7 @@ bun check
 ```
 
 ## 🛠 Features
-- **STARTTLS**: Automatic protocol encryption.
+- **Plain-Text Fast**: Clean SMTP protocol implementation without TLS overhead.
 - **MX Resolution**: Dynamic target lookup.
 - **Queue**: Automatic backoff retries for 4xx errors.
 - **Multi-Auth**: Support for multiple account credentials via JSON.

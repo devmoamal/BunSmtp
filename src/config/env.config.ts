@@ -9,7 +9,8 @@ const envSchema = z.object({
     .default("development"),
 
   // Inbound SMTP service configuration
-  SMTP_PORT: z.string().default("587").transform(Number),
+  SMTP_PORT: z.string().default("25").transform(Number),
+  SMTP_RELAY_PORT: z.string().default("25").transform(Number),
   SMTP_USER: z.string(),
   SMTP_PASS: z.string(),
 

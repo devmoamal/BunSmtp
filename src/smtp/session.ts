@@ -65,6 +65,7 @@ export class SMTPSession {
           "ENHANCEDSTATUSCODES",
           "8BITMIME",
           "CHUNKING",
+          // STARTTLS REMOVED
         ]);
         break;
 
