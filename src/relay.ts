@@ -1,6 +1,6 @@
 import { resolveMx } from "dns/promises";
 import { logger } from "@/utils/logger";
-import { env as config } from "@/config/env.config";
+import { env as config, isTLSEnabled } from "@/config/env.config";
 import { tryCatch } from "@/lib/tryCatch";
 import type { MailData } from "@/types/mail";
 
@@ -74,18 +74,21 @@ async function performManualRelay(
 
     const timeout = setTimeout(() => {
       reject(new Error(`Operation timed out while at step: ${currentStep}`));
-    }, 30000);
+    }, 300000); // 5 minute timeout for relay
 
     try {
       await Bun.connect({
         hostname: host,
         port: port,
+        tls: {}, // Initialize TLS engine
         socket: {
           data(s, data) {
             const res = data.toString();
             const code = parseInt(res.substring(0, 3));
 
             logger.debug(`[Protocol Handshake] << ${res.trim()}`);
+
+            const hasStartTLS = res.includes("STARTTLS");
 
             if (code >= 400 && currentStep !== "QUIT") {
               clearTimeout(timeout);
@@ -108,7 +111,47 @@ async function performManualRelay(
 
               case "EHLO":
                 if (code === 250) {
-                  // Direct transition to MAIL (TLS/STARTTLS is completely removed)
+                  if (hasStartTLS) {
+                    logger.debug(
+                      "Encryption requested: Initiating STARTTLS negotiation.",
+                    );
+                    s.write("STARTTLS\r\n");
+                    currentStep = "STARTTLS";
+                  } else {
+                    s.write(`MAIL FROM:<${mail.from}>\r\n`);
+                    currentStep = "MAIL";
+                  }
+                }
+                break;
+
+              case "STARTTLS":
+                if (code === 220) {
+                  try {
+                    const socket = s as any;
+                    if (typeof socket.startTLS === "function") {
+                      socket.startTLS();
+                      logger.debug(
+                        "Encryption active: Socket upgraded to TLS.",
+                      );
+                      s.write(`EHLO ${config.SMTP_DOMAIN}\r\n`);
+                      currentStep = "EHLO_POST_TLS";
+                    } else {
+                      // Fallback: Continue without TLS if startTLS is not available
+                      logger.warn(
+                        "Socket upgrade failed: startTLS not supported. Continuing in plain text.",
+                      );
+                      s.write(`MAIL FROM:<${mail.from}>\r\n`);
+                      currentStep = "MAIL";
+                    }
+                  } catch (e) {
+                    logger.error("TLS negotiation failure:", e);
+                    reject(new Error("TLS upgrade failed during relay"));
+                  }
+                }
+                break;
+
+              case "EHLO_POST_TLS":
+                if (code === 250) {
                   s.write(`MAIL FROM:<${mail.from}>\r\n`);
                   currentStep = "MAIL";
                 }

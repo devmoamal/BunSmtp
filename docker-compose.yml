@@ -1,14 +1,28 @@
-version: "3.8"
+version: '3.8'
+
 services:
   smtp-relay:
     build: .
     container_name: bun-smtp-relay
+    restart: always
     ports:
-      - "${SMTP_PORT:-25}:25"
+      - "587:587"
+      - "25:25"
+    volumes:
+      - ./data:/usr/src/app/data
+      - ./certs:/certs
     environment:
-      - SMTP_PORT=${SMTP_PORT:-25}
+      - NODE_ENV=production
+      - SMTP_PORT=587
       - SMTP_USER=${SMTP_USER}
       - SMTP_PASS=${SMTP_PASS}
       - SMTP_DOMAIN=${SMTP_DOMAIN:-localhost}
+      - SMTP_USERS_JSON=${SMTP_USERS_JSON:-[]}
       - DEBUG=${DEBUG:-false}
-    restart: always
+      - TLS_CERT=/certs/fullchain.pem
+      - TLS_KEY=/certs/privkey.pem
+    labels:
+      - "traefik.enable=true"
+      - "traefik.tcp.routers.smtp.rule=HostSNI(`mail.moamal.space`)"
+      - "traefik.tcp.routers.smtp.entrypoints=smtp"
+      - "traefik.tcp.routers.smtp.tls.certresolver=letsencrypt"

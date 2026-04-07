@@ -25,6 +25,10 @@ const envSchema = z.object({
     .string()
     .optional()
     .transform((v) => v === "true"),
+
+  // TLS configuration for STARTTLS
+  TLS_CERT: z.string().optional(),
+  TLS_KEY: z.string().optional(),
 });
 
 const result = envSchema.safeParse(process.env);
@@ -37,6 +41,11 @@ if (!result.success) {
 export const env = result.data;
 export const isProduction = env.NODE_ENV === "production";
 export const isDevelopment = env.NODE_ENV === "development";
+
+/**
+ * Determines if TLS is enabled based on the presence of certificate files.
+ */
+export const isTLSEnabled = !!(env.TLS_CERT && env.TLS_KEY);
 
 /**
  * Retrieves the compiled list of authorized secondary users.

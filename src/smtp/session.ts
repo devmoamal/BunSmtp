@@ -1,6 +1,6 @@
 import { buildResponse, buildMultiResponse } from "./protocol";
 import { logger } from "@/utils/logger";
-import { env as config, getAuthorizedUsers } from "@/config/env.config";
+import { env as config, getAuthorizedUsers, isTLSEnabled } from "@/config/env.config";
 import { mailQueue } from "@/smtp/queue";
 import { SMTPCode, SessionState } from "@/types/protocol";
 import type { MailData } from "@/types/mail";
@@ -17,6 +17,7 @@ export class SMTPSession {
 
   constructor(
     private write: (data: string, id: string) => any,
+    private onUpgrade: () => void,
     private onComplete: (data: MailData) => Promise<void>,
   ) {
     this.id = Math.random().toString(36).substring(2, 10);
@@ -57,7 +58,7 @@ export class SMTPSession {
       case "EHLO":
       case "HELO":
         this.state = SessionState.CONNECTED;
-        this.sendMulti(SMTPCode.ACTION_COMPLETED, [
+        const capabilities = [
           config.SMTP_DOMAIN,
           "PIPELINING",
           "SIZE 10485760",
@@ -65,8 +66,20 @@ export class SMTPSession {
           "ENHANCEDSTATUSCODES",
           "8BITMIME",
           "CHUNKING",
-          // STARTTLS REMOVED
-        ]);
+        ];
+        if (isTLSEnabled) {
+          capabilities.push("STARTTLS");
+        }
+        this.sendMulti(SMTPCode.ACTION_COMPLETED, capabilities);
+        break;
+
+      case "STARTTLS":
+        if (isTLSEnabled) {
+          this.send(SMTPCode.SERVICE_READY, "2.0.0 Ready to start TLS");
+          this.onUpgrade();
+        } else {
+          this.send(SMTPCode.UNRECOGNIZED_COMMAND, "Command not recognized");
+        }
         break;
 
       case "AUTH":
