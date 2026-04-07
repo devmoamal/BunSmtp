@@ -13,7 +13,7 @@ services:
       - ./certs:/certs
     environment:
       - NODE_ENV=production
-      - SMTP_PORT=587
+      - SMTP_PORT=${SMTP_PORT:-25}
       - SMTP_USER=${SMTP_USER}
       - SMTP_PASS=${SMTP_PASS}
       - SMTP_DOMAIN=${SMTP_DOMAIN:-localhost}
@@ -21,8 +21,3 @@ services:
       - DEBUG=${DEBUG:-false}
       - TLS_CERT=/certs/fullchain.pem
       - TLS_KEY=/certs/privkey.pem
-    labels:
-      - "traefik.enable=true"
-      - "traefik.tcp.routers.smtp.rule=HostSNI(`mail.moamal.space`)"
-      - "traefik.tcp.routers.smtp.entrypoints=smtp"
-      - "traefik.tcp.routers.smtp.tls.certresolver=letsencrypt"
